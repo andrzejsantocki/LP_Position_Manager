@@ -35,6 +35,24 @@ def save_balance_movements(balance_movements):
         pickle.dump(balance_movements, f)
 
 
+def recall_on_double_dot(func):
+    def wrapper(*args, **kwargs):
+        while True:
+            try:
+                func(*args, **kwargs)
+                break
+            except ValueError as e:
+                if str(e) == "Restart Entry":
+                    continue
+                if str(e) == "Quit Entry":
+                    break
+                else:
+                    print("⛔ Exception on the way. Redirect to main menu...")
+                    break
+    return wrapper
+
+
+
 # Helper function to handle default inputs (auto-d
 def get_input(prompt, default_value):
     user_input = input(prompt).strip()
@@ -42,6 +60,14 @@ def get_input(prompt, default_value):
     # If input is empty, return the default value
     if user_input == '':
         return default_value
+
+    if user_input == '..':
+        print('Restarting entry \n')
+        raise ValueError("Restart Entry")
+
+    if user_input == 'q':
+        print('Quit entry \n')
+        raise ValueError("Quit Entry")
 
     # Attempt to handle numeric values with commas or dots
     try:
@@ -54,10 +80,11 @@ def get_input(prompt, default_value):
         return str(numeric_value)  # Return as a string with dot as decimal separator for non-whole numbers
     except ValueError:
         # If conversion fails, return the input as it is (non-numeric text)
-        return user_input
+        return user_input or default_value #if user_input is null return default_value
 
 
 # Function to book a new fee
+@recall_on_double_dot
 def book_fee():
     positions = load_positions()
     if not positions:
@@ -107,6 +134,7 @@ def book_fee():
 
 
 # Function to delete rebalancing entry
+@recall_on_double_dot
 def delete_rebalancing():
     balance_movements = load_balance_movements()
     if not balance_movements:
@@ -152,6 +180,7 @@ def delete_rebalancing():
 
 
 # Function to book a rebalancing
+@recall_on_double_dot
 def book_rebalancing():
     positions = load_positions()
     if not positions:
@@ -242,7 +271,13 @@ def book_rebalancing():
         delete_rebalancing()
 
 
+
+
+
+
+
 # Function to create a new position
+@recall_on_double_dot
 def create_new_position():
     pair = get_input("Enter Coin Pair (e.g., USDT-USD+): ", '')
     coin1_name, coin2_name = pair.split('-')
@@ -252,7 +287,10 @@ def create_new_position():
 
     date_input = get_input("Enter Date Added (YYYY-MM-DD) or press Enter for today: ", '')
     date_added = datetime.datetime.strptime(date_input, "%Y-%m-%d") if date_input else datetime.datetime.now()
-
+    loan_is_true = input('Is position subjected to loan? y/n?')
+    if loan_is_true:
+        loan_coin = get_input("Provide loan coin(ex.ETH)", '')
+        loan_value = get_input("Provide loan value", '0')
     positions = load_positions()
 
     new_position = {
@@ -266,7 +304,9 @@ def create_new_position():
         'date_added': date_added,
         'id': len(positions) + 1,
         'current_prices': {},
-        'fees': []  # Store manually added fees here
+        'fees': [] , # Store manually added fees here
+        'loan_coin': loan_coin,
+        'loan_value': loan_value
     }
 
     positions.append(new_position)
@@ -274,6 +314,7 @@ def create_new_position():
 
 
 # Function to calculate overall APY and summarize fees
+@recall_on_double_dot
 def calculate_overall_apy():
     positions = load_positions()
     if not positions:
@@ -350,6 +391,7 @@ def calculate_overall_apy():
 
 
 # Function to view positions and plot price persistence chart (based on hours)
+@recall_on_double_dot
 def view_positions():
     temp_pair = ''
     positions = load_positions()
@@ -429,7 +471,7 @@ def view_positions():
     else:
         print("\n❌ No balance movements recorded.")
 
-
+@recall_on_double_dot
 def modify_last_entry():
     positions = load_positions()
     if not positions:
@@ -499,6 +541,7 @@ def modify_last_entry():
 
 
 # Function to modify an existing position
+@recall_on_double_dot
 def modify_position():
     positions = load_positions()
     if not positions:
@@ -560,6 +603,7 @@ def modify_position():
 
 
 # Function to delete all entries
+@recall_on_double_dot
 def delete_all_positions():
     confirm = get_input(f"❓ Are you sure you want to delete all positions? (y/n): ", 'n').lower()
     if confirm == 'y':
@@ -573,6 +617,7 @@ def delete_all_positions():
 
 
 # Function to delete a position or all positions
+@recall_on_double_dot
 def delete_position():
     positions = load_positions()
     if not positions:
@@ -645,4 +690,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        """try:
+            main()
+        except Exception:
+            print("⛔ Exception on way.Rerun main menu")
+        
+        """
